@@ -1,0 +1,38 @@
+from Crypto.Cipher import DES
+from Crypto.Util.Padding import pad, unpad
+
+def des_encrypt(plaintext, key):
+    """
+    Encrypt plaintext using DES with the given key.
+    :param plaintext: str
+    :param key: bytes (8 bytes = 64 bits, only 56 bits used)
+    :return: bytes (ciphertext)
+    """
+    cipher = DES.new(key, DES.MODE_ECB)
+    padded_text = pad(plaintext.encode(), DES.block_size)
+    ciphertext = cipher.encrypt(padded_text)
+    return ciphertext
+
+def des_decrypt(ciphertext, key):
+    """
+    Decrypt ciphertext using DES with the given key.
+    :param ciphertext: bytes
+    :param key: bytes (8 bytes = 64 bits, only 56 bits used)
+    :return: str (plaintext)
+    """
+    cipher = DES.new(key, DES.MODE_ECB)
+    decrypted_padded = cipher.decrypt(ciphertext)
+    plaintext = unpad(decrypted_padded, DES.block_size).decode()
+    return plaintext
+
+# Example usage
+if __name__ == "__main__":
+    key = b'8bytekey'  # 8 bytes = 64 bits
+    plaintext = "DES is a block cipher."
+
+    print(f"Original Message: {plaintext}")
+    ciphertext = des_encrypt(plaintext, key)
+    print(f"Encrypted (hex): {ciphertext.hex()}")
+
+    decrypted = des_decrypt(ciphertext, key)
+    print(f"Decrypted: {decrypted}")
