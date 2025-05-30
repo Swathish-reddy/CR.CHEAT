@@ -1,0 +1,47 @@
+from collections import Counter
+
+# Ciphertext
+ciphertext = """53‡‡†305))6*;4826)4‡.)4‡);806*;48†8¶60))85;;]8*;:‡*8†83(88)5*†;46(;88*96*?;8)*‡(;485);5*†2:*‡(;4956*2(5*—4)8¶8*;4069285);)6†8)4‡‡;1(‡9;48081;8:8‡1;48†85;4)485†528806*81(‡9;48;(88;4(‡?34;48)4‡;161;:188;‡?;"""
+
+# Count character frequency
+freq = Counter(ciphertext)
+sorted_freq = sorted(freq.items(), key=lambda item: item[1], reverse=True)
+
+print("Character Frequencies (Descending):")
+for char, count in sorted_freq:
+    print(f"'{char}': {count}")
+
+# Create a mapping dictionary to help manually replace characters
+# This is a partially filled dictionary for you to fill as you decipher
+mapping = {
+    '‡': 'e',  # guessing based on frequency
+    '8': 't',  # guessed from patterns and frequency
+    ';': 'h',  # guessed from "the"
+    ')': 'o',
+    '(': 'n',
+    '*': 's',
+    '†': 'r',
+    '4': 'a',
+    '5': 'd',
+    '6': 'l',
+    '3': 'm',
+    '0': 'c',
+    '2': 'u',
+    '1': 'y',
+    ':': 'f',
+    '?': 'g',
+    ']': 'i',
+    '.': 'b',
+    '—': 'p',
+    '[': 'j',  # not in the text but reserved
+    '9': 'w',
+    '¶': 'v'
+}
+
+# Function to decode using the current mapping
+def decode(ciphertext, mapping):
+    return ''.join(mapping.get(c, c) for c in ciphertext)
+
+# Print partially decoded text
+print("\nPartially Decoded Text:")
+print(decode(ciphertext, mapping))
