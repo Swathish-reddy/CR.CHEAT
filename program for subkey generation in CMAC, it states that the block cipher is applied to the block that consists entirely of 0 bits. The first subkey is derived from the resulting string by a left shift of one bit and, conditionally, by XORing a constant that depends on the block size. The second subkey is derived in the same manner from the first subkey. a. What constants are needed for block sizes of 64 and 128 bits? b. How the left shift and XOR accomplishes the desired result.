@@ -1,0 +1,52 @@
+from Crypto.Cipher import AES, DES3
+from Crypto.Random import get_random_bytes
+
+def left_shift(bits):
+    """Left shift a byte array by 1 bit."""
+    shifted = int.from_bytes(bits, byteorder='big') << 1
+    shifted &= (1 << (len(bits) * 8)) - 1  # Trim to block size
+    return shifted.to_bytes(len(bits), byteorder='big')
+
+def xor_bytes(a, b):
+    return bytes(x ^ y for x, y in zip(a, b))
+
+def generate_cmac_subkeys(cipher, block_size_bits):
+    """Generate K1 and K2 subkeys for CMAC based on the cipher."""
+    block_size_bytes = block_size_bits // 8
+    Rb = 0x1B if block_size_bits == 64 else 0x87
+    
+    # Step 1: L = AES_K(0^block_size)
+    zero_block = bytes([0] * block_size_bytes)
+    L = cipher.encrypt(zero_block)
+
+    # Step 2: K1 = L << 1; if MSB(L) == 1 then K1 = K1 ^ Rb
+    if L[0] & 0x80:
+        K1 = xor_bytes(left_shift(L), bytes([Rb] + [0] * (block_size_bytes - 1)))
+    else:
+        K1 = left_shift(L)
+
+    # Step 3: K2 = K1 << 1; if MSB(K1) == 1 then K2 = K2 ^ Rb
+    if K1[0] & 0x80:
+        K2 = xor_bytes(left_shift(K1), bytes([Rb] + [0] * (block_size_bytes - 1)))
+    else:
+        K2 = left_shift(K1)
+
+    return K1, K2
+
+# AES-128 (128-bit CMAC)
+key_aes = get_random_bytes(16)
+aes_cipher = AES.new(key_aes, AES.MODE_ECB)
+K1_aes, K2_aes = generate_cmac_subkeys(aes_cipher, 128)
+
+print("AES-128 CMAC Subkeys:")
+print(f"K1: {K1_aes.hex()}")
+print(f"K2: {K2_aes.hex()}")
+
+# DES3 (64-bit CMAC) - emulate CMAC on 3DES
+key_3des = DES3.adjust_key_parity(get_random_bytes(24))
+des3_cipher = DES3.new(key_3des, DES3.MODE_ECB)
+K1_3des, K2_3des = generate_cmac_subkeys(des3_cipher, 64)
+
+print("\n3DES CMAC Subkeys:")
+print(f"K1: {K1_3des.hex()}")
+print(f"K2: {K2_3des.hex()}")
