@@ -1,0 +1,77 @@
+import string
+from collections import Counter
+import itertools
+
+# English letter frequency order from most to least frequent
+ENGLISH_FREQ_ORDER = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
+
+def frequency_order(text):
+    text = text.upper()
+    counts = Counter(c for c in text if c in string.ascii_uppercase)
+    return ''.join([item[0] for item in counts.most_common()])
+
+def decrypt_with_key(ciphertext, key_map):
+    result = []
+    for c in ciphertext.upper():
+        if c in string.ascii_uppercase:
+            result.append(key_map.get(c, c))
+        else:
+            result.append(c)
+    return ''.join(result)
+
+def score_text(text):
+    # Score text by comparing letter frequency to English frequency
+    text = text.upper()
+    counts = Counter(c for c in text if c in string.ascii_uppercase)
+    text_freq_order = ''.join([item[0] for item in counts.most_common()])
+
+    # Simple scoring: count number of letters matching the English order in the first 10 letters
+    score = 0
+    for i in range(min(len(text_freq_order), len(ENGLISH_FREQ_ORDER))):
+        if text_freq_order[i] == ENGLISH_FREQ_ORDER[i]:
+            score += 1
+    return score
+
+def generate_candidate_keys(cipher_freq_order, max_swaps=3):
+    # Start with direct mapping: ciphertext freq -> english freq
+    base_mapping = {c: e for c, e in zip(cipher_freq_order, ENGLISH_FREQ_ORDER)}
+
+    # Generate variations by swapping letters in the mapping (to try different keys)
+    candidates = []
+    letters = list(cipher_freq_order[:max_swaps])
+    english_letters = list(ENGLISH_FREQ_ORDER[:max_swaps])
+
+    # Generate all permutations of the first max_swaps letters of English freq order
+    for perm in itertools.permutations(english_letters):
+        mapping = base_mapping.copy()
+        for c, e in zip(letters, perm):
+            mapping[c] = e
+        candidates.append(mapping)
+
+    return candidates
+
+def letter_frequency_attack(ciphertext, top_n=10):
+    cipher_freq_order = frequency_order(ciphertext)
+    candidate_keys = generate_candidate_keys(cipher_freq_order)
+
+    scored_texts = []
+    for key in candidate_keys:
+        plaintext = decrypt_with_key(ciphertext, key)
+        score = score_text(plaintext)
+        scored_texts.append((score, plaintext))
+
+    # Sort by score descending, then take top N
+    scored_texts.sort(key=lambda x: x[0], reverse=True)
+    return scored_texts[:top_n]
+
+if __name__ == "__main__":
+    # Example ciphertext encrypted by monoalphabetic substitution:
+    ciphertext = ("ZPV JT B DSJUFE DPOTJCMF TDSFBUF XJUI B OBNF PG QJUBUJPO "
+                  "XJUI QSPHSBNJUZ. UIF TVQQPSU JT SFDPOTJCMF.")
+
+    print("Ciphertext:\n", ciphertext)
+    top_plaintexts = letter_frequency_attack(ciphertext, top_n=10)
+
+    print("\nTop possible plaintexts:")
+    for i, (score, pt) in enumerate(top_plaintexts, 1):
+        print(f"{i}. (score: {score}) {pt}\n")
