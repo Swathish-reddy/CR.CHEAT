@@ -1,0 +1,65 @@
+from math import gcd
+import random
+
+def extended_gcd(a, b):
+    if b == 0:
+        return a, 1, 0
+    g, x1, y1 = extended_gcd(b, a % b)
+    x = y1
+    y = x1 - (a // b) * y1
+    return g, x, y
+
+def mod_inverse(e, phi):
+    g, x, _ = extended_gcd(e, phi)
+    if g != 1:
+        return None
+    return x % phi
+
+def generate_keypair(p, q):
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    
+    # Choose e coprime with phi
+    e = 3
+    while gcd(e, phi) != 1:
+        e += 2
+    
+    d = mod_inverse(e, phi)
+    return (e, d, n, phi)
+
+def simulate_leak_and_regen(p, q):
+    # Generate original keys
+    e, d, n, phi = generate_keypair(p, q)
+    print(f"Original keys:\n Public key (e={e}, n={n})\n Private key d={d}\n")
+    
+    # Leak private key d
+    leaked_private_key = d
+    print(f"Private key leaked: d = {leaked_private_key}\n")
+    
+    # Bob generates new keypair with same n (same p,q)
+    # New e should be coprime with phi(n)
+    e_new = e + 2  # Just pick a different e for demonstration
+    while gcd(e_new, phi) != 1:
+        e_new += 2
+    
+    d_new = mod_inverse(e_new, phi)
+    print(f"Bob generates new keys with same modulus n:\n New public key e = {e_new}\n New private key d = {d_new}\n")
+    
+    # Attacker knowing p,q can compute phi and find d_new easily
+    phi_attacker = (p - 1) * (q - 1)
+    d_new_attacker = mod_inverse(e_new, phi_attacker)
+    print(f"Attacker computes new private key from leaked p,q and new e:\n d_new = {d_new_attacker}\n")
+    
+    if d_new == d_new_attacker:
+        print("Attacker successfully computes Bob's new private key. Not safe!")
+    else:
+        print("Attacker failed. But this shouldn't happen with correct RSA parameters.")
+
+def main():
+    # Example primes (small for demo; in practice use large primes)
+    p = 61
+    q = 53
+    simulate_leak_and_regen(p, q)
+
+if __name__ == "__main__":
+    main()
