@@ -1,0 +1,75 @@
+# DES Key generation with special subkeys:
+# Each 48-bit subkey = 24 bits from left half + 24 bits from right half (disjoint 28-bit halves)
+
+# PC-1 table to select 56 bits from the 64-bit original key (dropping parity bits)
+PC_1 = [
+    57, 49, 41, 33, 25, 17, 9,
+    1,  58, 50, 42, 34, 26, 18,
+    10, 2,  59, 51, 43, 35, 27,
+    19, 11, 3,  60, 52, 44, 36,
+
+    63, 55, 47, 39, 31, 23, 15,
+    7,  62, 54, 46, 38, 30, 22,
+    14, 6,  61, 53, 45, 37, 29,
+    21, 13, 5,  28, 20, 12, 4
+]
+
+# Left shifts per round (standard DES)
+SHIFT_SCHEDULE = [1, 1, 2, 2, 2, 2, 2, 2,
+                  1, 2, 2, 2, 2, 2, 2, 1]
+
+def hex_to_bin(hex_string):
+    return bin(int(hex_string, 16))[2:].zfill(len(hex_string)*4)
+
+def bin_to_hex(bin_string):
+    return hex(int(bin_string, 2))[2:].upper().zfill(len(bin_string)//4)
+
+def permute(bits, table):
+    return ''.join(bits[i-1] for i in table)
+
+def left_shift(bits, n):
+    return bits[n:] + bits[:n]
+
+def generate_subkeys(key_64bit_hex):
+    # 1. Convert hex key to binary (64 bits)
+    key_bin = hex_to_bin(key_64bit_hex)
+    assert len(key_bin) == 64, "Key must be 64 bits"
+
+    # 2. Apply PC-1 to get 56 bits
+    key_56 = permute(key_bin, PC_1)
+
+    # Split into left and right halves (28 bits each)
+    left = key_56[:28]
+    right = key_56[28:]
+
+    subkeys = []
+
+    for i, shift in enumerate(SHIFT_SCHEDULE):
+        # Left shift halves separately
+        left = left_shift(left, shift)
+        right = left_shift(right, shift)
+
+        # Now, form subkey:
+        # Take first 24 bits of left half
+        left_sub = left[:24]
+
+        # Take first 24 bits of right half
+        right_sub = right[:24]
+
+        # Concatenate to form 48-bit subkey
+        subkey = left_sub + right_sub
+        assert len(subkey) == 48
+
+        subkeys.append(subkey)
+
+    return subkeys
+
+# Example usage:
+
+key_hex = "133457799BBCDFF1"  # Example DES key
+
+subkeys = generate_subkeys(key_hex)
+
+print("Generated 16 Subkeys (48-bit each):")
+for i, sk in enumerate(subkeys, 1):
+    print(f"K{i}: {sk} (hex: {bin_to_hex(sk)})")
