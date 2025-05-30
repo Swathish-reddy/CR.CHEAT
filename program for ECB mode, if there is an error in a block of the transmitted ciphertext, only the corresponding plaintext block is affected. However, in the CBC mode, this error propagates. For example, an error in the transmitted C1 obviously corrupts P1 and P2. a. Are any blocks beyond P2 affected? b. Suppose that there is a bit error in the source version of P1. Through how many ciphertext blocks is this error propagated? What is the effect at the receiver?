@@ -1,0 +1,61 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+
+def encrypt_aes_ecb(plaintext, key):
+    cipher = AES.new(key, AES.MODE_ECB)
+    return cipher.encrypt(pad(plaintext.encode(), AES.block_size))
+
+def decrypt_aes_ecb(ciphertext, key):
+    cipher = AES.new(key, AES.MODE_ECB)
+    return unpad(cipher.decrypt(ciphertext), AES.block_size).decode()
+
+def encrypt_aes_cbc(plaintext, key, iv):
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    return cipher.encrypt(pad(plaintext.encode(), AES.block_size))
+
+def decrypt_aes_cbc(ciphertext, key, iv):
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    return unpad(cipher.decrypt(ciphertext), AES.block_size).decode()
+
+# Setup
+key = get_random_bytes(16)
+iv = get_random_bytes(16)
+plaintext = "This is block1. This is block2. This is block3."
+
+# Encrypt in ECB
+ciphertext_ecb = encrypt_aes_ecb(plaintext, key)
+# Introduce error in 2nd ciphertext block (flip one bit)
+ct_ecb_list = list(ciphertext_ecb)
+ct_ecb_list[17] ^= 1  # flip 1 bit in block 2
+corrupted_ecb = bytes(ct_ecb_list)
+
+# Decrypt corrupted ECB ciphertext
+try:
+    decrypted_ecb = decrypt_aes_ecb(corrupted_ecb, key)
+except Exception as e:
+    decrypted_ecb = f"Error during decryption: {e}"
+
+# Encrypt in CBC
+ciphertext_cbc = encrypt_aes_cbc(plaintext, key, iv)
+# Introduce error in 1st ciphertext block (flip one bit)
+ct_cbc_list = list(ciphertext_cbc)
+ct_cbc_list[0] ^= 1  # flip 1 bit in block 1
+corrupted_cbc = bytes(ct_cbc_list)
+
+# Decrypt corrupted CBC ciphertext
+try:
+    decrypted_cbc = decrypt_aes_cbc(corrupted_cbc, key, iv)
+except Exception as e:
+    decrypted_cbc = f"Error during decryption: {e}"
+
+print("Original plaintext:\n", plaintext)
+print("\n--- ECB mode ---")
+print("Decrypted with error in block 2:")
+print(decrypted_ecb)
+print("\nOnly the block with error is affected.\n")
+
+print("--- CBC mode ---")
+print("Decrypted with error in block 1:")
+print(decrypted_cbc)
+print("\nBlocks 1 and 2 corrupted due to error propagation in CBC.\n")
