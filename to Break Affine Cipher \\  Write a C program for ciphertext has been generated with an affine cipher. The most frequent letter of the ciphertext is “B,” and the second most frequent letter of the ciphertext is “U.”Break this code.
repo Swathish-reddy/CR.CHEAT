@@ -1,0 +1,56 @@
+from math import gcd
+
+def mod_inverse(a, m):
+    for x in range(1, m):
+        if (a * x) % m == 1:
+            return x
+    return None
+
+def solve_affine_keys(p1, c1, p2, c2):
+    # Solve equations: a * p1 + b ≡ c1 mod 26 and a * p2 + b ≡ c2 mod 26
+    diff_p = (p1 - p2) % 26
+    diff_c = (c1 - c2) % 26
+
+    inv = mod_inverse(diff_p, 26)
+    if inv is None:
+        raise ValueError("No modular inverse, cannot solve.")
+
+    a = (diff_c * inv) % 26
+    b = (c1 - a * p1) % 26
+    return a, b
+
+def affine_decrypt(ciphertext, a, b):
+    a_inv = mod_inverse(a, 26)
+    if a_inv is None:
+        raise ValueError("Invalid key: 'a' has no inverse modulo 26.")
+    result = ""
+    for char in ciphertext:
+        if char.isalpha():
+            c = ord(char.upper()) - ord('A')
+            p = (a_inv * (c - b)) % 26
+            result += chr(p + ord('A'))
+        else:
+            result += char
+    return result
+
+# Assign numeric values to letters
+def letter_to_num(c):
+    return ord(c.upper()) - ord('A')
+
+# Given:
+# Most frequent cipher letters: 'B', 'U'
+# Assuming they map to: 'E' and 'T'
+c1, c2 = letter_to_num('B'), letter_to_num('U')
+p1, p2 = letter_to_num('E'), letter_to_num('T')
+
+try:
+    a, b = solve_affine_keys(p1, c1, p2, c2)
+    print(f"Recovered keys: a = {a}, b = {b}")
+
+    # Enter ciphertext to decrypt
+    ciphertext = input("Enter the affine-encrypted ciphertext: ")
+    plaintext = affine_decrypt(ciphertext, a, b)
+    print("\nDecrypted Plaintext:", plaintext)
+
+except Exception as e:
+    print("Error:", e)
