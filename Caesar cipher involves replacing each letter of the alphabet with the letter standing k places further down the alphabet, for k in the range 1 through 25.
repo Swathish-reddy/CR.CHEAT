@@ -1,0 +1,20 @@
+def caesar_cipher_encrypt(text, shift):
+    encrypted_text = ""
+    for char in text:
+        if char.isalpha():
+            start = ord('A') if char.isupper() else ord('a')
+            # Shift character and wrap around the alphabet
+            offset = (ord(char) - start + shift) % 26
+            encrypted_text += chr(start + offset)
+        else:
+            # Non-alphabetic characters remain unchanged
+            encrypted_text += char
+    return encrypted_text
+
+# Input text from user
+plaintext = input("Enter the text to encrypt: ")
+
+print("\nCaesar Cipher Encryptions for shifts 1 through 25:")
+for k in range(1, 26):
+    encrypted = caesar_cipher_encrypt(plaintext, k)
+    print(f"Shift {k:2}: {encrypted}")
