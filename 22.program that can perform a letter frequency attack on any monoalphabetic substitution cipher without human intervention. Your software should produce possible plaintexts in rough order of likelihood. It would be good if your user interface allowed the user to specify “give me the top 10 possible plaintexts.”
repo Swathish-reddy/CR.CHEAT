@@ -1,0 +1,119 @@
+import string
+import random
+from collections import Counter
+
+# English letter frequency (A-Z) from typical corpus
+ENGLISH_FREQ_ORDER = 'ETAOINSHRDLCUMWFGYPBVKJXQZ'
+
+# English bigram frequencies (top ~100), normalized log probabilities can be used
+# For simplicity, we'll use frequency counts from a typical corpus sample here (relative importance)
+# For demo, only a small subset used
+ENGLISH_BIGRAMS = {
+    'TH': 1.52, 'HE': 1.28, 'IN': 0.94, 'ER': 0.94, 'AN': 0.82,
+    'RE': 0.68, 'ND': 0.63, 'AT': 0.59, 'ON': 0.57, 'NT': 0.56,
+    'HA': 0.56, 'ES': 0.56, 'ST': 0.55, 'EN': 0.55, 'ED': 0.53,
+    'TO': 0.52, 'IT': 0.50, 'OU': 0.50, 'EA': 0.47, 'HI': 0.46,
+    'IS': 0.46, 'OR': 0.43, 'TI': 0.34, 'AS': 0.33, 'TE': 0.27,
+    'ET': 0.19, 'NG': 0.18, 'OF': 0.16, 'AL': 0.09, 'DE': 0.09
+}
+
+ALPHABET = string.ascii_uppercase
+
+def clean_text(text):
+    return ''.join([c.upper() for c in text if c.isalpha()])
+
+def freq_order(text):
+    # Return letters ordered by descending frequency in text
+    c = Counter(text)
+    letters = [x for x in ALPHABET if x in c]
+    letters.sort(key=lambda x: c[x], reverse=True)
+    return ''.join(letters)
+
+def score_text(text):
+    """Score text by bigram frequencies (higher is better)."""
+    score = 0
+    text = clean_text(text)
+    for i in range(len(text)-1):
+        bigram = text[i:i+2]
+        if bigram in ENGLISH_BIGRAMS:
+            score += ENGLISH_BIGRAMS[bigram]
+    return score
+
+def decrypt(text, key_map):
+    """Decrypt text using key_map dict: ciphertext letter -> plaintext letter."""
+    result = []
+    for c in text:
+        if c in ALPHABET:
+            result.append(key_map[c])
+        else:
+            result.append(c)
+    return ''.join(result)
+
+def initial_key_guess(ciphertext):
+    # Map most frequent letters in ciphertext to most frequent in English
+    freq_letters = freq_order(ciphertext)
+    key_map = {}
+    for i, c in enumerate(freq_letters):
+        if i < len(ENGLISH_FREQ_ORDER):
+            key_map[c] = ENGLISH_FREQ_ORDER[i]
+    # Map remaining ciphertext letters randomly (to cover all 26 letters)
+    unmapped_ct_letters = [c for c in ALPHABET if c not in key_map]
+    unmapped_pt_letters = [c for c in ALPHABET if c not in key_map.values()]
+    random.shuffle(unmapped_pt_letters)
+    for ct, pt in zip(unmapped_ct_letters, unmapped_pt_letters):
+        key_map[ct] = pt
+    return key_map
+
+def swap_key_letters(key_map, c1, c2):
+    # Swap values mapped to ciphertext letters c1 and c2 in key_map
+    new_map = key_map.copy()
+    new_map[c1], new_map[c2] = new_map[c2], new_map[c1]
+    return new_map
+
+def hill_climb_attack(ciphertext, max_iterations=10000, top_n=10):
+    ciphertext = clean_text(ciphertext)
+    best_keys = []
+    
+    key_map = initial_key_guess(ciphertext)
+    plaintext = decrypt(ciphertext, key_map)
+    best_score = score_text(plaintext)
+    best_keys.append((best_score, plaintext, key_map))
+    
+    for _ in range(max_iterations):
+        # Pick two random ciphertext letters to swap mapping
+        c1, c2 = random.sample(ALPHABET, 2)
+        new_key_map = swap_key_letters(key_map, c1, c2)
+        candidate_plaintext = decrypt(ciphertext, new_key_map)
+        candidate_score = score_text(candidate_plaintext)
+        
+        # Accept new key if score improves
+        if candidate_score > best_score:
+            key_map = new_key_map
+            best_score = candidate_score
+            best_keys.append((best_score, candidate_plaintext, key_map))
+    
+    # Sort best keys by score descending and pick top N unique plaintexts
+    best_keys = sorted(best_keys, key=lambda x: x[0], reverse=True)
+    unique_texts = []
+    results = []
+    for score, plaintext, key in best_keys:
+        if plaintext not in unique_texts:
+            unique_texts.append(plaintext)
+            results.append((score, plaintext))
+        if len(results) >= top_n:
+            break
+    
+    return results
+
+if __name__ == "__main__":
+    # Example ciphertext encrypted with monoalphabetic substitution
+    ciphertext = """
+    WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ
+    """
+    
+    top_n = 10
+    results = hill_climb_attack(ciphertext, max_iterations=20000, top_n=top_n)
+    
+    print(f"Top {top_n} possible plaintexts:\n")
+    for rank, (score, plaintext) in enumerate(results, 1):
+        print(f"{rank}. Score: {score:.2f}\n{plaintext}\n")
