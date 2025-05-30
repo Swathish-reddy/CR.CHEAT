@@ -1,0 +1,80 @@
+import numpy as np
+
+def mod26_inv(matrix):
+    det = int(round(np.linalg.det(matrix))) % 26
+    det_inv = None
+    for i in range(1, 26):
+        if (det * i) % 26 == 1:
+            det_inv = i
+            break
+    if det_inv is None:
+        raise ValueError("Determinant inverse does not exist, cannot invert matrix")
+
+    adj = np.array([[matrix[1,1], -matrix[0,1]],
+                    [-matrix[1,0], matrix[0,0]]]) % 26
+    inv_matrix = (det_inv * adj) % 26
+    return inv_matrix
+
+def text_to_numbers(text):
+    text = text.upper()
+    return [ord(c) - ord('A') for c in text if c.isalpha()]
+
+def numbers_to_text(numbers):
+    return ''.join(chr(n + ord('A')) for n in numbers)
+
+def form_matrix_from_pairs(pairs, size=2):
+    # pairs should be list of numbers
+    # Form a size x size matrix from first size^2 numbers
+    matrix = []
+    for i in range(size):
+        row = pairs[i*size:(i+1)*size]
+        matrix.append(row)
+    return np.array(matrix) % 26
+
+def hill_encrypt(plaintext_nums, key_matrix):
+    ciphertext = []
+    for i in range(0, len(plaintext_nums), 2):
+        pair = np.array([[plaintext_nums[i]], [plaintext_nums[i+1]]])
+        c = np.dot(key_matrix, pair) % 26
+        ciphertext.extend(c.flatten())
+    return ciphertext
+
+# --- Known plaintext attack function ---
+def recover_key(plaintext, ciphertext):
+    # Convert texts to numbers
+    p_nums = text_to_numbers(plaintext)
+    c_nums = text_to_numbers(ciphertext)
+
+    # We need at least 2 plaintext pairs (4 letters) for 2x2 key
+    if len(p_nums) < 4 or len(c_nums) < 4:
+        raise ValueError("Not enough data for known plaintext attack")
+
+    # Form plaintext and ciphertext matrices (2x2)
+    P = form_matrix_from_pairs(p_nums[:4])  # first 4 letters of plaintext
+    C = form_matrix_from_pairs(c_nums[:4])  # first 4 letters of ciphertext
+
+    # Compute inverse of plaintext matrix mod 26
+    P_inv = mod26_inv(P)
+
+    # Recover key matrix: K = C * P^-1 mod 26
+    K = np.dot(C, P_inv) % 26
+
+    return K
+
+# --- Example usage ---
+
+# Known plaintext (at least 4 letters)
+known_plaintext = "HELP"
+# Corresponding ciphertext encrypted by unknown key
+known_ciphertext = "ZBXR"
+
+# Recover the key matrix
+recovered_key = recover_key(known_plaintext, known_ciphertext)
+print("Recovered Key Matrix:")
+print(recovered_key)
+
+# Verify by encrypting known plaintext with recovered key
+p_nums = text_to_numbers(known_plaintext)
+cipher_check = hill_encrypt(p_nums, recovered_key)
+print("Ciphertext from recovered key:", numbers_to_text(cipher_check))
+print("Given ciphertext:", known_ciphertext)
