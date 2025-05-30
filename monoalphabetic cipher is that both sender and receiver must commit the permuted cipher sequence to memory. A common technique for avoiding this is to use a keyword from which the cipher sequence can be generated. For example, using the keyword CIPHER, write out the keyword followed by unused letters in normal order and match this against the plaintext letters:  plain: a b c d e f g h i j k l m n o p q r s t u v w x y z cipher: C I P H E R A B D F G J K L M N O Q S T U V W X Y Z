@@ -1,0 +1,56 @@
+import string
+
+def generate_cipher_alphabet(keyword):
+    keyword = keyword.upper()
+    seen = set()
+    cipher_alphabet = []
+
+    # Add unique characters from keyword
+    for char in keyword:
+        if char not in seen and char in string.ascii_uppercase:
+            seen.add(char)
+            cipher_alphabet.append(char)
+
+    # Add remaining letters
+    for char in string.ascii_uppercase:
+        if char not in seen:
+            cipher_alphabet.append(char)
+
+    return cipher_alphabet
+
+def monoalphabetic_encrypt(plaintext, cipher_alphabet):
+    alphabet = list(string.ascii_uppercase)
+    table = dict(zip(alphabet, cipher_alphabet))
+    ciphertext = ''
+    for char in plaintext.upper():
+        if char in table:
+            ciphertext += table[char]
+        else:
+            ciphertext += char  # preserve spaces, punctuation
+    return ciphertext
+
+def monoalphabetic_decrypt(ciphertext, cipher_alphabet):
+    alphabet = list(string.ascii_uppercase)
+    reverse_table = dict(zip(cipher_alphabet, alphabet))
+    plaintext = ''
+    for char in ciphertext.upper():
+        if char in reverse_table:
+            plaintext += reverse_table[char]
+        else:
+            plaintext += char
+    return plaintext
+
+# === MAIN ===
+keyword = "CIPHER"
+cipher_alphabet = generate_cipher_alphabet(keyword)
+
+print("Generated Cipher Alphabet:")
+print("Plain:  ", ' '.join(string.ascii_uppercase))
+print("Cipher: ", ' '.join(cipher_alphabet))
+
+plaintext = input("\nEnter message to encrypt: ")
+ciphertext = monoalphabetic_encrypt(plaintext, cipher_alphabet)
+print("Encrypted:", ciphertext)
+
+decrypted = monoalphabetic_decrypt(ciphertext, cipher_alphabet)
+print("Decrypted:", decrypted)
