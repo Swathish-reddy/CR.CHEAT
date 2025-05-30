@@ -1,0 +1,49 @@
+def text_to_numbers(text):
+    text = text.upper().replace(" ", "")
+    return [ord(c) - ord('A') for c in text if c.isalpha()]
+
+def numbers_to_text(nums):
+    return ''.join(chr((n % 26) + ord('A')) for n in nums)
+
+def otp_encrypt(plaintext, key_stream):
+    pt_nums = text_to_numbers(plaintext)
+    if len(key_stream) < len(pt_nums):
+        raise ValueError("Key stream too short for plaintext length.")
+    ct_nums = [(pt + k) % 26 for pt, k in zip(pt_nums, key_stream)]
+    return numbers_to_text(ct_nums)
+
+def otp_decrypt(ciphertext, key_stream):
+    ct_nums = text_to_numbers(ciphertext)
+    if len(key_stream) < len(ct_nums):
+        raise ValueError("Key stream too short for ciphertext length.")
+    pt_nums = [(ct - k) % 26 for ct, k in zip(ct_nums, key_stream)]
+    return numbers_to_text(pt_nums)
+
+def find_key_stream(plaintext, ciphertext):
+    pt_nums = text_to_numbers(plaintext)
+    ct_nums = text_to_numbers(ciphertext)
+    if len(pt_nums) != len(ct_nums):
+        raise ValueError("Plaintext and ciphertext must be same length for key recovery.")
+    key_stream = [(ct - pt) % 26 for pt, ct in zip(pt_nums, ct_nums)]
+    return key_stream
+
+# === Part (a): Encrypt "send more money" ===
+
+plaintext_a = "send more money"
+key_stream_a = [9, 0, 1, 7, 23, 15, 21, 14, 11, 11, 2, 8, 9]
+
+ciphertext_a = otp_encrypt(plaintext_a, key_stream_a)
+print("Part (a) Ciphertext:", ciphertext_a)
+
+# === Part (b): Given ciphertext from (a), find key for decrypting to "cash not needed" ===
+
+plaintext_b = "cash not needed"
+ciphertext_b = ciphertext_a[:len(text_to_numbers(plaintext_b))]  # ciphertext truncated to length
+
+key_stream_b = find_key_stream(plaintext_b, ciphertext_b)
+print("Part (b) Recovered Key Stream:", key_stream_b)
+
+# Verify by decrypting ciphertext_b with recovered key
+
+decrypted_b = otp_decrypt(ciphertext_b, key_stream_b)
+print("Part (b) Decrypted text:", decrypted_b)
