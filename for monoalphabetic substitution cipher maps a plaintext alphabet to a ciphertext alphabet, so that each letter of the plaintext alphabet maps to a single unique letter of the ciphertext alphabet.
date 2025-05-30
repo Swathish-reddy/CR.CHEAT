@@ -1,0 +1,49 @@
+import random
+import string
+
+def generate_cipher_alphabet():
+    # Generate a random shuffled alphabet for substitution
+    letters = list(string.ascii_lowercase)
+    shuffled = letters[:]
+    random.shuffle(shuffled)
+    return dict(zip(letters, shuffled))
+
+def encrypt_monoalphabetic(plaintext, cipher_map):
+    encrypted_text = ""
+    for char in plaintext:
+        if char.isalpha():
+            is_upper = char.isupper()
+            lower_char = char.lower()
+            substituted = cipher_map[lower_char]
+            encrypted_text += substituted.upper() if is_upper else substituted
+        else:
+            encrypted_text += char
+    return encrypted_text
+
+def decrypt_monoalphabetic(ciphertext, cipher_map):
+    # Reverse the cipher_map for decryption
+    reversed_map = {v: k for k, v in cipher_map.items()}
+    decrypted_text = ""
+    for char in ciphertext:
+        if char.isalpha():
+            is_upper = char.isupper()
+            lower_char = char.lower()
+            original = reversed_map[lower_char]
+            decrypted_text += original.upper() if is_upper else original
+        else:
+            decrypted_text += char
+    return decrypted_text
+
+# Generate cipher key
+cipher_alphabet = generate_cipher_alphabet()
+print("Cipher Alphabet Mapping:")
+print(cipher_alphabet)
+
+# Input plaintext
+plaintext = input("\nEnter the text to encrypt: ")
+encrypted = encrypt_monoalphabetic(plaintext, cipher_alphabet)
+print("\nEncrypted Text:", encrypted)
+
+# Decrypt to verify
+decrypted = decrypt_monoalphabetic(encrypted, cipher_alphabet)
+print("Decrypted Text:", decrypted)
