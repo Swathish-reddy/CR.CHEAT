@@ -1,0 +1,86 @@
+import numpy as np
+
+MOD = 26
+
+def mod_inv_matrix(matrix, modulus):
+    """Compute modular inverse of a matrix under modulus (for 2x2 matrix)."""
+    det = int(round(np.linalg.det(matrix))) % modulus
+    det_inv = mod_inv(det, modulus)
+    if det_inv is None:
+        raise ValueError("Matrix is not invertible under mod {}".format(modulus))
+    
+    # For 2x2 matrix: inverse = (1/det) * [d, -b; -c, a]
+    inv_matrix = np.array([[matrix[1,1], -matrix[0,1]],
+                           [-matrix[1,0], matrix[0,0]]]) % modulus
+    return (det_inv * inv_matrix) % modulus
+
+def mod_inv(a, m):
+    """Find modular inverse of a under modulus m using Extended Euclidean algorithm."""
+    a = a % m
+    for x in range(1, m):
+        if (a * x) % m == 1:
+            return x
+    return None
+
+def text_to_numbers(text):
+    """Convert text to numbers 0-25 (A=0)."""
+    return [ord(c) - ord('A') for c in text.upper() if c.isalpha()]
+
+def numbers_to_text(numbers):
+    """Convert numbers 0-25 to uppercase letters."""
+    return ''.join(chr(n % 26 + ord('A')) for n in numbers)
+
+def recover_key(plaintext_pairs, ciphertext_pairs):
+    """
+    Given plaintext-ciphertext pairs (list of strings), 
+    recover Hill cipher key matrix (2x2).
+    """
+    # Convert texts to numbers and build matrices
+    P = []
+    C = []
+    
+    for pt, ct in zip(plaintext_pairs, ciphertext_pairs):
+        pt_nums = text_to_numbers(pt)
+        ct_nums = text_to_numbers(ct)
+        
+        if len(pt_nums) != 4 or len(ct_nums) != 4:
+            raise ValueError("Each plaintext/ciphertext pair must be length 4 (for 2x2 Hill cipher)")
+        
+        # Each pair corresponds to 2 column vectors of plaintext and ciphertext
+        P.append(pt_nums[0:2])
+        P.append(pt_nums[2:4])
+        C.append(ct_nums[0:2])
+        C.append(ct_nums[2:4])
+    
+    # Convert to numpy matrices (2x2)
+    P_matrix = np.array(P).T % MOD
+    C_matrix = np.array(C).T % MOD
+    
+    print("Plaintext matrix P:\n", P_matrix)
+    print("Ciphertext matrix C:\n", C_matrix)
+    
+    # Compute modular inverse of P
+    P_inv = mod_inv_matrix(P_matrix, MOD)
+    print("Inverse of P modulo {}:\n".format(MOD), P_inv)
+    
+    # Recover key matrix K = C * P_inv mod 26
+    K = np.dot(C_matrix, P_inv) % MOD
+    print("Recovered key matrix K:\n", K)
+    
+    return K
+
+if __name__ == "__main__":
+    # Example known plaintext-ciphertext pairs (each length 4)
+    # Suppose the true key is [[9,4],[5,7]] mod 26 used to encrypt plaintext blocks
+    
+    plaintext_pairs = [
+        "HELP",  # P matrix columns: [H,E] and [L,P]
+        "TEST"   # Another known plaintext pair (2 blocks)
+    ]
+    ciphertext_pairs = [
+        "XUBS",
+        "MGQQ"
+    ]
+    
+    # Recover the key
+    key = recover_key(plaintext_pairs, ciphertext_pairs)
