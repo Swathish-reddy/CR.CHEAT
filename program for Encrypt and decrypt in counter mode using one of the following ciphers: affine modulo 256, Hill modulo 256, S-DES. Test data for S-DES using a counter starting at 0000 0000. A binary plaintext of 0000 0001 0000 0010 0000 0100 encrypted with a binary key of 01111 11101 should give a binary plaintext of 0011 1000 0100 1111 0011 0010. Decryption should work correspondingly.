@@ -1,0 +1,136 @@
+# S-DES + Counter (CTR) mode encryption and decryption
+# Author: ChatGPT
+
+def permute(bits, sequence):
+    return [bits[i-1] for i in sequence]
+
+def left_shift(bits, n):
+    return bits[n:] + bits[:n]
+
+def xor(bits1, bits2):
+    return [b1 ^ b2 for b1, b2 in zip(bits1, bits2)]
+
+def bits_to_int(bits):
+    return int(''.join(str(b) for b in bits), 2)
+
+def int_to_bits(n, size):
+    return [int(x) for x in format(n, f'0{size}b')]
+
+# S-DES constants
+P10 = [3,5,2,7,4,10,1,9,8,6]
+P8 = [6,3,7,4,8,5,10,9]
+IP = [2,6,3,1,4,8,5,7]
+IP_inv = [4,1,3,5,7,2,8,6]
+EP = [4,1,2,3,2,3,4,1]
+P4 = [2,4,3,1]
+
+S0 = [
+    [1,0,3,2],
+    [3,2,1,0],
+    [0,2,1,3],
+    [3,1,3,2]
+]
+
+S1 = [
+    [0,1,2,3],
+    [2,0,1,3],
+    [3,0,1,0],
+    [2,1,0,3]
+]
+
+def generate_keys(key_10bits):
+    p10_key = permute(key_10bits, P10)
+    left = p10_key[:5]
+    right = p10_key[5:]
+    left1 = left_shift(left, 1)
+    right1 = left_shift(right, 1)
+    k1 = permute(left1 + right1, P8)
+    left2 = left_shift(left1, 2)
+    right2 = left_shift(right1, 2)
+    k2 = permute(left2 + right2, P8)
+    return k1, k2
+
+def sbox_lookup(bits, sbox):
+    row = bits[0]*2 + bits[3]
+    col = bits[1]*2 + bits[2]
+    val = sbox[row][col]
+    return int_to_bits(val, 2)
+
+def fk(bits_8, subkey):
+    left = bits_8[:4]
+    right = bits_8[4:]
+    expanded_right = permute(right, EP)
+    xor_result = xor(expanded_right, subkey)
+    left_sbox = sbox_lookup(xor_result[:4], S0)
+    right_sbox = sbox_lookup(xor_result[4:], S1)
+    p4_result = permute(left_sbox + right_sbox, P4)
+    left_result = xor(left, p4_result)
+    return left_result + right
+
+def switch_halves(bits_8):
+    return bits_8[4:] + bits_8[:4]
+
+def encrypt_sdes(plaintext_8bits, k1, k2):
+    ip_bits = permute(plaintext_8bits, IP)
+    temp = fk(ip_bits, k1)
+    switched = switch_halves(temp)
+    temp2 = fk(switched, k2)
+    ciphertext = permute(temp2, IP_inv)
+    return ciphertext
+
+def decrypt_sdes(ciphertext_8bits, k1, k2):
+    ip_bits = permute(ciphertext_8bits, IP)
+    temp = fk(ip_bits, k2)
+    switched = switch_halves(temp)
+    temp2 = fk(switched, k1)
+    plaintext = permute(temp2, IP_inv)
+    return plaintext
+
+# CTR mode encryption/decryption for S-DES
+def ctr_process(data_bits, key_bits, nonce_bits):
+    k1, k2 = generate_keys(key_bits)
+    block_size = 8
+    blocks = [data_bits[i:i+block_size] for i in range(0, len(data_bits), block_size)]
+    output_bits = []
+    nonce_int = bits_to_int(nonce_bits)
+
+    for i, block in enumerate(blocks):
+        # Counter block = nonce + counter i (mod 256)
+        counter_val = (nonce_int + i) % 256
+        counter_bits = int_to_bits(counter_val, block_size)
+        # Encrypt counter block using S-DES
+        encrypted_counter = encrypt_sdes(counter_bits, k1, k2)
+        # XOR encrypted counter with plaintext/ciphertext block
+        processed_block = xor(block, encrypted_counter)
+        output_bits.extend(processed_block)
+
+    return output_bits
+
+# Utility functions
+def str_to_bitlist(s):
+    return [int(bit) for bit in s.replace(" ", "")]
+
+def bitlist_to_str(bits):
+    return ''.join(str(b) for b in bits)
+
+# Testing the CTR mode S-DES with given test data
+if __name__ == "__main__":
+    # Given data:
+    plaintext_str = "000000010000001000000100"  # 24 bits (3 blocks)
+    key_str = "0111111101"  # 10 bits
+    nonce_str = "00000000"   # 8 bits nonce (counter starts at 0)
+
+    plaintext_bits = str_to_bitlist(plaintext_str)
+    key_bits = str_to_bitlist(key_str)
+    nonce_bits = str_to_bitlist(nonce_str)
+
+    # Encrypt plaintext
+    ciphertext_bits = ctr_process(plaintext_bits, key_bits, nonce_bits)
+    print("Ciphertext (binary):", bitlist_to_str(ciphertext_bits))
+
+    # Expected ciphertext: 001110000100111100110010
+    print("Expected ciphertext: 001110000100111100110010")
+
+    # Decrypt ciphertext (same function, symmetric)
+    decrypted_bits = ctr_process(ciphertext_bits, key_bits, nonce_bits)
+    print("Decrypted plaintext (binary):", bitlist_to_str(decrypted_bits))
