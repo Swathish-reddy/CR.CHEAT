@@ -1,0 +1,44 @@
+import random
+
+def bitstring_to_lanes(bitstring):
+    """Convert a 1600-bit string to 25 lanes (64 bits each)."""
+    return [bitstring[i:i+64] for i in range(0, len(bitstring), 64)]
+
+def lane_has_nonzero_bit(lane):
+    return '1' in lane
+
+def create_random_block():
+    """Create a 1024-bit block with each lane having at least one nonzero bit."""
+    block = ""
+    for _ in range(16):  # 16 lanes = 1024 bits
+        # Ensure at least one bit is 1
+        bits = ['0'] * 64
+        bits[random.randint(0, 63)] = '1'
+        random.shuffle(bits)
+        block += ''.join(bits)
+    return block
+
+def xor_lanes(state, block_lanes):
+    """XOR the block lanes into the state."""
+    for i in range(16):  # XOR into rate portion (first 16 lanes)
+        state[i] = bin(int(state[i], 2) ^ int(block_lanes[i], 2))[2:].zfill(64)
+
+def simulate_sha3_absorption():
+    # Initial state: 25 lanes of 64 bits (all zeros)
+    state = ['0'*64 for _ in range(25)]
+
+    # Track zero lanes in capacity portion (lanes 16 to 24)
+    capacity_indices = list(range(16, 25))
+    round_count = 0
+
+    while any(state[i] == '0'*64 for i in capacity_indices):
+        block = create_random_block()
+        block_lanes = bitstring_to_lanes(block + '0'*576)  # Padding with zeros for full 1600 bits
+        xor_lanes(state, block_lanes)
+        round_count += 1
+
+    return round_count
+
+# Run the simulation
+rounds_needed = simulate_sha3_absorption()
+print(f"All capacity lanes became non-zero after {rounds_needed} absorbing rounds.")
