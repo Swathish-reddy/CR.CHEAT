@@ -1,0 +1,42 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+import os
+
+# CBC-MAC implementation using AES
+def cbc_mac(key, message, block_size=16):
+    cipher = AES.new(key, AES.MODE_ECB)
+    assert len(message) % block_size == 0, "Message must be a multiple of block size"
+    blocks = [message[i:i+block_size] for i in range(0, len(message), block_size)]
+    
+    previous = bytes([0] * block_size)  # IV = 0 for CBC-MAC
+    for block in blocks:
+        xored = bytes(a ^ b for a, b in zip(block, previous))
+        previous = cipher.encrypt(xored)
+    return previous  # final block = MAC tag
+
+# Utility function
+def xor_bytes(a, b):
+    return bytes(x ^ y for x, y in zip(a, b))
+
+# Generate AES key
+key = os.urandom(16)
+
+# One-block message X (must be block-aligned)
+X = pad(b"AttackNow", 16)[:16]
+print(f"Original one-block message (X): {X}")
+
+# Compute T = MAC(K, X)
+T = cbc_mac(key, X)
+print(f"CBC-MAC for X (T): {T.hex()}")
+
+# Forge two-block message: X || (X ⊕ T)
+second_block = xor_bytes(X, T)
+forged_message = X + second_block
+
+# Compute MAC of forged message
+forged_mac = cbc_mac(key, forged_message)
+print(f"Forged two-block message: {forged_message}")
+print(f"CBC-MAC for forged message: {forged_mac.hex()}")
+
+# Check if forged_mac equals original T
+print("Forgery successful!" if forged_mac == T else "Forgery failed.")
