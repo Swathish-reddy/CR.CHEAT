@@ -1,0 +1,73 @@
+def mod_exp(base, exp, mod):
+    """Efficient modular exponentiation."""
+    result = 1
+    base = base % mod
+    while exp > 0:
+        if exp & 1:
+            result = (result * base) % mod
+        base = (base * base) % mod
+        exp >>= 1
+    return result
+
+def rsa_encrypt_char(m, e, n):
+    """Encrypt a single character (integer 0-25) using RSA."""
+    return mod_exp(m, e, n)
+
+def rsa_decrypt_char(c, d, n):
+    """Decrypt a single character (integer ciphertext) using RSA."""
+    return mod_exp(c, d, n)
+
+def brute_force_attack(cipher_char, e, n):
+    """Brute force attack to find plaintext from ciphertext for single char."""
+    for m in range(26):  # Try all possible plaintext letters 0-25
+        if mod_exp(m, e, n) == cipher_char:
+            return m
+    return None
+
+def text_to_numbers(text):
+    return [ord(ch.upper()) - ord('A') for ch in text if ch.isalpha()]
+
+def numbers_to_text(numbers):
+    return ''.join(chr(num + ord('A')) for num in numbers)
+
+def main():
+    # Example RSA public/private key (small for demo)
+    p, q = 61, 53
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    e = 17  # public exponent
+    # Compute d (private exponent)
+    def egcd(a, b):
+        if b == 0:
+            return a, 1, 0
+        g, x1, y1 = egcd(b, a % b)
+        return g, y1, x1 - (a // b) * y1
+    def modinv(a, m):
+        g, x, _ = egcd(a, m)
+        if g != 1:
+            return None
+        return x % m
+    d = modinv(e, phi)
+
+    plaintext = "HELLOWORLD"
+    print(f"Plaintext: {plaintext}")
+
+    # Convert plaintext letters to numbers 0-25
+    plaintext_nums = text_to_numbers(plaintext)
+
+    # Encrypt each letter separately
+    ciphertext = [rsa_encrypt_char(m, e, n) for m in plaintext_nums]
+    print(f"Ciphertext (encrypted numbers): {ciphertext}")
+
+    # Decrypt correctly using private key d
+    decrypted_nums = [rsa_decrypt_char(c, d, n) for c in ciphertext]
+    decrypted_text = numbers_to_text(decrypted_nums)
+    print(f"Decrypted text: {decrypted_text}")
+
+    # Attack: brute force each ciphertext character (no private key)
+    recovered_nums = [brute_force_attack(c, e, n) for c in ciphertext]
+    recovered_text = numbers_to_text(recovered_nums)
+    print(f"Recovered text by brute force attack: {recovered_text}")
+
+if __name__ == "__main__":
+    main()
