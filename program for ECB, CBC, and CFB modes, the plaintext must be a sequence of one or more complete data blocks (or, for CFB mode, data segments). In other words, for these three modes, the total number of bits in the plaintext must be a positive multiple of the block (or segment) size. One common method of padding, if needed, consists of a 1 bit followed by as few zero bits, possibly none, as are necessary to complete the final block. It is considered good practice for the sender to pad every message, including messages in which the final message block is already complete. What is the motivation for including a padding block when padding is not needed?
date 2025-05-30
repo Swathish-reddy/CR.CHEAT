@@ -1,0 +1,83 @@
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+
+BLOCK_SIZE = 16  # AES block size in bytes = 128 bits
+
+def pad_iso_7816_4(data: bytes) -> bytes:
+    """
+    Pad data using ISO/IEC 7816-4 scheme:
+    Append one byte 0x80 (binary 10000000),
+    then 0x00 bytes until length is multiple of BLOCK_SIZE.
+    """
+    padding_len = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
+    return data + bytes([0x80]) + bytes(padding_len - 1)
+
+def unpad_iso_7816_4(data: bytes) -> bytes:
+    """
+    Remove ISO/IEC 7816-4 padding:
+    Find 0x80 byte from the end and remove padding bytes after it.
+    """
+    # Padding always ends with 0x80 byte
+    pad_start = data.rfind(b'\x80')
+    if pad_start == -1:
+        raise ValueError("Invalid padding")
+    return data[:pad_start]
+
+def encrypt_ecb(plaintext: bytes, key: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_ECB)
+    padded = pad_iso_7816_4(plaintext)
+    return cipher.encrypt(padded)
+
+def decrypt_ecb(ciphertext: bytes, key: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_ECB)
+    decrypted = cipher.decrypt(ciphertext)
+    return unpad_iso_7816_4(decrypted)
+
+def encrypt_cbc(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    padded = pad_iso_7816_4(plaintext)
+    return cipher.encrypt(padded)
+
+def decrypt_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    decrypted = cipher.decrypt(ciphertext)
+    return unpad_iso_7816_4(decrypted)
+
+def encrypt_cfb(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_CFB, iv=iv, segment_size=128)
+    # For CFB, padding still applied because the request mentions full blocks/segments.
+    padded = pad_iso_7816_4(plaintext)
+    return cipher.encrypt(padded)
+
+def decrypt_cfb(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+    cipher = AES.new(key, AES.MODE_CFB, iv=iv, segment_size=128)
+    decrypted = cipher.decrypt(ciphertext)
+    return unpad_iso_7816_4(decrypted)
+
+# Demo usage
+
+if __name__ == "__main__":
+    key = get_random_bytes(BLOCK_SIZE)
+    iv = get_random_bytes(BLOCK_SIZE)
+    plaintext = b"Hello World! This is a test message."
+
+    print(f"Original plaintext: {plaintext}")
+
+    # ECB
+    ciphertext_ecb = encrypt_ecb(plaintext, key)
+    print(f"ECB Encrypted (hex): {ciphertext_ecb.hex()}")
+    decrypted_ecb = decrypt_ecb(ciphertext_ecb, key)
+    print(f"ECB Decrypted: {decrypted_ecb}")
+
+    # CBC
+    ciphertext_cbc = encrypt_cbc(plaintext, key, iv)
+    print(f"CBC Encrypted (hex): {ciphertext_cbc.hex()}")
+    decrypted_cbc = decrypt_cbc(ciphertext_cbc, key, iv)
+    print(f"CBC Decrypted: {decrypted_cbc}")
+
+    # CFB
+    ciphertext_cfb = encrypt_cfb(plaintext, key, iv)
+    print(f"CFB Encrypted (hex): {ciphertext_cfb.hex()}")
+    decrypted_cfb = decrypt_cfb(ciphertext_cfb, key, iv)
+    print(f"CFB Decrypted: {decrypted_cfb}")
+
