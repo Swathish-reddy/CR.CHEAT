@@ -1,0 +1,70 @@
+import string
+
+# Standard English letter frequency (A-Z)
+ENGLISH_FREQ = {
+    'A': 8.12, 'B': 1.49, 'C': 2.71, 'D': 4.32, 'E': 12.02, 'F': 2.30,
+    'G': 2.03, 'H': 5.92, 'I': 7.31, 'J': 0.10, 'K': 0.69, 'L': 3.98,
+    'M': 2.61, 'N': 6.95, 'O': 7.68, 'P': 1.82, 'Q': 0.11, 'R': 6.02,
+    'S': 6.28, 'T': 9.10, 'U': 2.88, 'V': 1.11, 'W': 2.09, 'X': 0.17,
+    'Y': 2.11, 'Z': 0.07
+}
+
+def clean_text(text):
+    return ''.join([c.upper() for c in text if c.isalpha()])
+
+def decrypt_caesar(ciphertext, shift):
+    decrypted = []
+    for char in ciphertext:
+        if char in string.ascii_uppercase:
+            val = (ord(char) - ord('A') - shift) % 26
+            decrypted.append(chr(val + ord('A')))
+        else:
+            decrypted.append(char)
+    return ''.join(decrypted)
+
+def letter_frequency(text):
+    freq = {ch: 0 for ch in string.ascii_uppercase}
+    for ch in text:
+        if ch in freq:
+            freq[ch] += 1
+    total = sum(freq.values())
+    if total == 0:
+        return freq
+    for ch in freq:
+        freq[ch] = freq[ch] / total * 100
+    return freq
+
+def chi_squared_stat(observed_freq):
+    chi2 = 0
+    for ch in ENGLISH_FREQ:
+        expected = ENGLISH_FREQ[ch]
+        observed = observed_freq.get(ch, 0)
+        chi2 += ((observed - expected) ** 2) / expected
+    return chi2
+
+def frequency_attack(ciphertext, top_n=10):
+    ciphertext = clean_text(ciphertext)
+    candidates = []
+    
+    for shift in range(26):
+        plaintext_candidate = decrypt_caesar(ciphertext, shift)
+        freq = letter_frequency(plaintext_candidate)
+        score = chi_squared_stat(freq)
+        candidates.append((score, shift, plaintext_candidate))
+    
+    # Sort by chi2 score ascending (best match first)
+    candidates.sort(key=lambda x: x[0])
+    
+    print(f"Top {top_n} plaintext candidates:")
+    for i in range(min(top_n, len(candidates))):
+        score, shift, plaintext = candidates[i]
+        print(f"Shift = {shift}: Score = {score:.2f} => {plaintext}")
+
+if __name__ == "__main__":
+    # Example ciphertext encrypted by additive cipher with some unknown shift
+    ciphertext = "ZHOFRPH WR WKH ZRUOG RI FUBSWRJUDSKB"
+    
+    # User input: top N candidates
+    top_n = 10
+    
+    frequency_attack(ciphertext, top_n)
