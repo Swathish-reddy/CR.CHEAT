@@ -1,0 +1,126 @@
+import string
+import random
+from collections import Counter
+
+ENGLISH_FREQ_ORDER = "ETAOINSHRDLCUMWFGYPBVKJXQZ"
+
+def text_to_numbers(text):
+    return [ord(c) - ord('A') for c in text if c.isalpha()]
+
+def numbers_to_text(nums):
+    return ''.join(chr(n + ord('A')) for n in nums)
+
+def frequency_score(text):
+    text = text.upper()
+    counts = Counter(c for c in text if c.isalpha())
+    total = sum(counts.values())
+    if total == 0:
+        return float('-inf')
+    # Frequency order of letters in ciphertext
+    freq_order = ''.join([item[0] for item in counts.most_common()])
+    # Score based on how close freq_order matches English freq order
+    score = 0
+    for i, letter in enumerate(freq_order):
+        if letter in ENGLISH_FREQ_ORDER:
+            score += (26 - abs(i - ENGLISH_FREQ_ORDER.index(letter)))
+    return score
+
+def apply_key(ciphertext, key):
+    # key maps ciphertext letters to plaintext letters (both uppercase strings)
+    plaintext = []
+    for c in ciphertext:
+        if c.upper() in string.ascii_uppercase:
+            idx = string.ascii_uppercase.index(c.upper())
+            p = key[idx]
+            if c.islower():
+                p = p.lower()
+            plaintext.append(p)
+        else:
+            plaintext.append(c)
+    return ''.join(plaintext)
+
+def random_key():
+    letters = list(string.ascii_uppercase)
+    random.shuffle(letters)
+    return ''.join(letters)
+
+def swap_letters(key, i, j):
+    key_list = list(key)
+    key_list[i], key_list[j] = key_list[j], key_list[i]
+    return ''.join(key_list)
+
+def hill_climb(ciphertext, max_iterations=10000):
+    # Start with frequency-based initial key guess
+    # Frequency of ciphertext letters
+    ctext = ciphertext.upper()
+    counts = Counter(c for c in ctext if c.isalpha())
+    most_common = [c for c, _ in counts.most_common()]
+    # Fill the rest letters not present
+    rest_letters = [c for c in string.ascii_uppercase if c not in most_common]
+    guess_order = most_common + rest_letters
+    # Initial key guess: map most common ciphertext letters to English freq order
+    key_map = ['']*26
+    for i, c in enumerate(guess_order):
+        key_map[ord(c) - ord('A')] = ENGLISH_FREQ_ORDER[i]
+    # Fill unmapped letters in key
+    used = set(key_map)
+    for i in range(26):
+        if key_map[i] == '':
+            for c in ENGLISH_FREQ_ORDER:
+                if c not in used:
+                    key_map[i] = c
+                    used.add(c)
+                    break
+    key = ''.join(key_map)
+
+    best_key = key
+    best_score = frequency_score(apply_key(ciphertext, key))
+
+    for iteration in range(max_iterations):
+        # Swap two letters in key
+        i, j = random.sample(range(26), 2)
+        new_key = swap_letters(best_key, i, j)
+        plaintext = apply_key(ciphertext, new_key)
+        score = frequency_score(plaintext)
+        if score > best_score:
+            best_key = new_key
+            best_score = score
+
+    return best_key, best_score, apply_key(ciphertext, best_key)
+
+def generate_top_candidates(ciphertext, top_n=10, attempts=20, iterations=5000):
+    candidates = []
+    for _ in range(attempts):
+        key, score, plaintext = hill_climb(ciphertext, max_iterations=iterations)
+        candidates.append((score, key, plaintext))
+    # Sort descending by score
+    candidates.sort(reverse=True)
+    # Remove duplicates (by plaintext)
+    unique = []
+    seen = set()
+    for score, key, plaintext in candidates:
+        if plaintext not in seen:
+            unique.append((score, key, plaintext))
+            seen.add(plaintext)
+        if len(unique) >= top_n:
+            break
+    return unique
+
+def main():
+    ciphertext = input("Enter ciphertext (letters only): ").strip()
+    top_n = input("Number of top candidates to display (default 10): ").strip()
+    try:
+        top_n = int(top_n)
+    except:
+        top_n = 10
+
+    print("\nDecrypting (this may take a moment)...\n")
+    results = generate_top_candidates(ciphertext.upper(), top_n=top_n)
+
+    for i, (score, key, plaintext) in enumerate(results, 1):
+        print(f"Rank {i} | Score: {score}")
+        print(f"Key mapping: {key}")
+        print(f"Decrypted text:\n{plaintext}\n{'-'*40}")
+
+if __name__ == "__main__":
+    main()
