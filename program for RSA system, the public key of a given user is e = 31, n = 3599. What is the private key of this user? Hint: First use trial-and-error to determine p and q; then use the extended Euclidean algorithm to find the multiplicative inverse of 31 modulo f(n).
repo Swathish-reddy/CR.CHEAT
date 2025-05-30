@@ -1,0 +1,51 @@
+def trial_factorization(n):
+    # Find prime factors p and q of n by trial division
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return i, n // i
+    return None, None
+
+def extended_gcd(a, b):
+    # Returns (gcd, x, y) where ax + by = gcd
+    if b == 0:
+        return a, 1, 0
+    gcd, x1, y1 = extended_gcd(b, a % b)
+    x = y1
+    y = x1 - (a // b) * y1
+    return gcd, x, y
+
+def mod_inverse(e, phi):
+    # Compute d such that d*e ≡ 1 (mod phi)
+    gcd, x, _ = extended_gcd(e, phi)
+    if gcd != 1:
+        # No modular inverse if e and phi not coprime
+        return None
+    else:
+        return x % phi
+
+def main():
+    e = 31
+    n = 3599
+    
+    # Step 1: Factorize n
+    p, q = trial_factorization(n)
+    if p is None or q is None:
+        print("Failed to factorize n.")
+        return
+    
+    print(f"Factors of n: p = {p}, q = {q}")
+    
+    # Step 2: Compute phi(n)
+    phi = (p - 1) * (q - 1)
+    print(f"phi(n) = {phi}")
+    
+    # Step 3: Compute private key d
+    d = mod_inverse(e, phi)
+    if d is None:
+        print("No modular inverse found, cannot compute private key.")
+        return
+    
+    print(f"Private key d = {d}")
+
+if __name__ == "__main__":
+    main()
