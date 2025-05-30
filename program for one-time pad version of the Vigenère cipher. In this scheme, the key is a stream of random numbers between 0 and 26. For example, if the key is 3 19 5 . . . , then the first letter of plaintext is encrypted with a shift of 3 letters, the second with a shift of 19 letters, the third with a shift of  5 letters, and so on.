@@ -1,0 +1,38 @@
+import random
+import string
+
+def generate_key_stream(length):
+    return [random.randint(0, 25) for _ in range(length)]
+
+def encrypt_vigenere_otp(plaintext, key_stream):
+    plaintext = plaintext.upper().replace(" ", "")
+    ciphertext = ""
+    for i, char in enumerate(plaintext):
+        if char in string.ascii_uppercase:
+            shift = key_stream[i]
+            encrypted_char = chr((ord(char) - ord('A') + shift) % 26 + ord('A'))
+            ciphertext += encrypted_char
+    return ciphertext
+
+def decrypt_vigenere_otp(ciphertext, key_stream):
+    plaintext = ""
+    for i, char in enumerate(ciphertext):
+        if char in string.ascii_uppercase:
+            shift = key_stream[i]
+            decrypted_char = chr((ord(char) - ord('A') - shift) % 26 + ord('A'))
+            plaintext += decrypted_char
+    return plaintext
+
+# Example usage
+if __name__ == "__main__":
+    plaintext = "SEND MORE MONEY"
+    key_stream = [9, 0, 1, 7, 23, 15, 21, 14, 11, 11, 2, 8, 9]  # Must match plaintext length (excluding spaces)
+
+    print("Plaintext:", plaintext)
+    print("Key Stream:", key_stream)
+
+    encrypted = encrypt_vigenere_otp(plaintext, key_stream)
+    print("Encrypted:", encrypted)
+
+    decrypted = decrypt_vigenere_otp(encrypted, key_stream)
+    print("Decrypted:", decrypted)
