@@ -1,0 +1,16 @@
+import math
+
+def playfair_keyspace():
+    # Total possible keys = permutations of 25 letters
+    total_keys = math.factorial(25)
+    log2_total_keys = math.log2(total_keys)
+
+    # Approximate effective keys considering equivalences (divide by 4)
+    effective_keys = total_keys // 4
+    log2_effective_keys = math.log2(effective_keys)
+
+    print(f"Total possible Playfair keys (ignoring equivalences): 2^{log2_total_keys:.2f}")
+    print(f"Approximate effectively unique keys (considering equivalences): 2^{log2_effective_keys:.2f}")
+
+if __name__ == "__main__":
+    playfair_keyspace()
