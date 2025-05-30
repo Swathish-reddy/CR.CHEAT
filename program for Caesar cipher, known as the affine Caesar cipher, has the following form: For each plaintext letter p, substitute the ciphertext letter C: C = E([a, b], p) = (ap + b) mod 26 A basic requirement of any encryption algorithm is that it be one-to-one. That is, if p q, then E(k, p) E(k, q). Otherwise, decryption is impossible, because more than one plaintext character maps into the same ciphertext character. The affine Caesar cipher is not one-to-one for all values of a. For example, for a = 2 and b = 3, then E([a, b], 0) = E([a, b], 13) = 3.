@@ -1,0 +1,62 @@
+def gcd(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def mod_inverse(a, m):
+    # Extended Euclidean Algorithm to find modular inverse of a mod m
+    m0, x0, x1 = m, 0, 1
+    if gcd(a, m) != 1:
+        return None  # Inverse doesn't exist if a and m not coprime
+    while a > 1:
+        q = a // m
+        a, m = m, a % m
+        x0, x1 = x1 - q * x0, x0
+    return x1 + m0 if x1 < 0 else x1
+
+def affine_encrypt(plaintext, a, b):
+    if gcd(a, 26) != 1:
+        raise ValueError(f"'a'={a} is not coprime with 26, encryption is not one-to-one.")
+    ciphertext = ""
+    plaintext = plaintext.upper()
+    for char in plaintext:
+        if char.isalpha():
+            p = ord(char) - ord('A')
+            c = (a * p + b) % 26
+            ciphertext += chr(c + ord('A'))
+        else:
+            ciphertext += char  # Keep non-alpha characters unchanged
+    return ciphertext
+
+def affine_decrypt(ciphertext, a, b):
+    a_inv = mod_inverse(a, 26)
+    if a_inv is None:
+        raise ValueError(f"Modular inverse for a={a} doesn't exist, can't decrypt.")
+    plaintext = ""
+    ciphertext = ciphertext.upper()
+    for char in ciphertext:
+        if char.isalpha():
+            c = ord(char) - ord('A')
+            p = (a_inv * (c - b)) % 26
+            plaintext += chr(p + ord('A'))
+        else:
+            plaintext += char  # Keep non-alpha characters unchanged
+    return plaintext
+
+# Example usage
+if __name__ == "__main__":
+    a, b = 5, 8  # Example valid key (a must be coprime with 26)
+    plaintext = "AFFINE CIPHER"
+    print("Plaintext:", plaintext)
+
+    ciphertext = affine_encrypt(plaintext, a, b)
+    print("Encrypted:", ciphertext)
+
+    decrypted = affine_decrypt(ciphertext, a, b)
+    print("Decrypted:", decrypted)
+
+    # Trying invalid 'a' example
+    try:
+        affine_encrypt("HELLO", 2, 3)
+    except ValueError as e:
+        print("Error:", e)
