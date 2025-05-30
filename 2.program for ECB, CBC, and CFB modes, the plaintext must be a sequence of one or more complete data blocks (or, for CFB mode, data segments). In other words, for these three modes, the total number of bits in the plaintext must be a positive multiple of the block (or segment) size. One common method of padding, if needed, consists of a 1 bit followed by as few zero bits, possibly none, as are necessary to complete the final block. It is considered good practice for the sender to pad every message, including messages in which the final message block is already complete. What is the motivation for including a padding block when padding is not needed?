@@ -1,0 +1,44 @@
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+
+def encrypt(mode_name, key, plaintext, iv=None):
+    if mode_name == 'ECB':
+        cipher = AES.new(key, AES.MODE_ECB)
+    elif mode_name == 'CBC':
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+    elif mode_name == 'CFB':
+        cipher = AES.new(key, AES.MODE_CFB, iv)
+    else:
+        raise ValueError("Unsupported mode")
+
+    padded_text = pad(plaintext.encode(), AES.block_size, style='iso7816')  # 1 followed by 0s
+    ciphertext = cipher.encrypt(padded_text)
+    return ciphertext
+
+def decrypt(mode_name, key, ciphertext, iv=None):
+    if mode_name == 'ECB':
+        cipher = AES.new(key, AES.MODE_ECB)
+    elif mode_name == 'CBC':
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+    elif mode_name == 'CFB':
+        cipher = AES.new(key, AES.MODE_CFB, iv)
+    else:
+        raise ValueError("Unsupported mode")
+
+    decrypted_padded = cipher.decrypt(ciphertext)
+    plaintext = unpad(decrypted_padded, AES.block_size, style='iso7816').decode()
+    return plaintext
+
+# Example usage
+if __name__ == "__main__":
+    key = get_random_bytes(16)  # AES-128
+    iv = get_random_bytes(16)
+    plaintext = "This is a test message."
+
+    for mode in ['ECB', 'CBC', 'CFB']:
+        print(f"\nMode: {mode}")
+        ciphertext = encrypt(mode, key, plaintext, iv)
+        print("Encrypted (hex):", ciphertext.hex())
+        decrypted = decrypt(mode, key, ciphertext, iv)
+        print("Decrypted:", decrypted)
