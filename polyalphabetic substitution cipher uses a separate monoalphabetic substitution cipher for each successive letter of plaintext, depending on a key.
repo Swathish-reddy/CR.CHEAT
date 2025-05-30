@@ -1,0 +1,48 @@
+def generate_vigenere_key(plaintext, keyword):
+    keyword = keyword.upper()
+    key = ""
+    key_index = 0
+
+    for char in plaintext:
+        if char.isalpha():
+            key += keyword[key_index % len(keyword)]
+            key_index += 1
+        else:
+            key += char  # Maintain non-alpha characters
+    return key
+
+def encrypt_vigenere(plaintext, keyword):
+    plaintext = plaintext.upper()
+    key = generate_vigenere_key(plaintext, keyword)
+    ciphertext = ""
+
+    for p, k in zip(plaintext, key):
+        if p.isalpha():
+            shift = (ord(p) - ord('A') + ord(k) - ord('A')) % 26
+            ciphertext += chr(shift + ord('A'))
+        else:
+            ciphertext += p
+    return ciphertext
+
+def decrypt_vigenere(ciphertext, keyword):
+    ciphertext = ciphertext.upper()
+    key = generate_vigenere_key(ciphertext, keyword)
+    plaintext = ""
+
+    for c, k in zip(ciphertext, key):
+        if c.isalpha():
+            shift = (ord(c) - ord(k) + 26) % 26
+            plaintext += chr(shift + ord('A'))
+        else:
+            plaintext += c
+    return plaintext
+
+# === MAIN ===
+keyword = input("Enter keyword: ")
+plaintext = input("Enter plaintext: ")
+
+ciphertext = encrypt_vigenere(plaintext, keyword)
+print("\nEncrypted Ciphertext:", ciphertext)
+
+decrypted = decrypt_vigenere(ciphertext, keyword)
+print("Decrypted Plaintext:", decrypted)
