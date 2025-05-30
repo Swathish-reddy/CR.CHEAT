@@ -1,0 +1,71 @@
+import string
+
+def prepare_key_matrix(keyword):
+    keyword = keyword.upper().replace('J', 'I')  # Playfair merges I and J
+    seen = set()
+    matrix = []
+
+    for char in keyword:
+        if char in string.ascii_uppercase and char not in seen:
+            seen.add(char)
+            matrix.append(char)
+
+    for char in string.ascii_uppercase:
+        if char == 'J':
+            continue
+        if char not in seen:
+            seen.add(char)
+            matrix.append(char)
+
+    return [matrix[i:i+5] for i in range(0, 25, 5)]
+
+def find_position(char, matrix):
+    for i, row in enumerate(matrix):
+        if char in row:
+            return i, row.index(char)
+    return None
+
+def decrypt_pair(a, b, matrix):
+    row1, col1 = find_position(a, matrix)
+    row2, col2 = find_position(b, matrix)
+
+    if row1 == row2:  # Same row
+        return matrix[row1][(col1 - 1) % 5], matrix[row2][(col2 - 1) % 5]
+    elif col1 == col2:  # Same column
+        return matrix[(row1 - 1) % 5][col1], matrix[(row2 - 1) % 5][col2]
+    else:  # Rectangle
+        return matrix[row1][col2], matrix[row2][col1]
+
+def playfair_decrypt(ciphertext, keyword):
+    ciphertext = ciphertext.upper().replace(" ", "").replace("J", "I")
+    matrix = prepare_key_matrix(keyword)
+    plaintext = ""
+
+    for i in range(0, len(ciphertext), 2):
+        a = ciphertext[i]
+        b = ciphertext[i+1]
+        p1, p2 = decrypt_pair(a, b, matrix)
+        plaintext += p1 + p2
+
+    return plaintext
+
+# === MAIN ===
+ciphertext = """
+KXJEY UREBE ZWEHE WRYTU HEYFS
+KREHE GOYFI WTTTU OLKSY CAJPO
+BOTEI ZONTX BYBNT GONEY CUZWR
+GDSON SXBOU YWRHE BAAHY USEDQ
+"""
+
+# Example key (replace with real one if known)
+keyword = "MONARCHY"
+
+# Clean and decrypt
+ciphertext = ciphertext.replace("\n", " ").replace(" ", "")
+decrypted_message = playfair_decrypt(ciphertext, keyword)
+
+# Format nicely
+formatted_output = ' '.join(decrypted_message[i:i+5] for i in range(0, len(decrypted_message), 5))
+
+print("Decrypted Message:")
+print(formatted_output)
