@@ -1,0 +1,77 @@
+Write a C program for Playfair matrix:
+M F H I/J K
+U N O P Q
+Z V W X Y
+E L A R G
+D S T B C
+Encrypt this message: Must see you over Cadogan West. Coming at once.
+
+\\\\\
+
+def build_matrix_from_custom(custom_rows):
+    matrix = []
+    for row in custom_rows:
+        matrix.extend(row.split())
+    return [matrix[i:i+5] for i in range(0, 25, 5)]
+
+def find_position(char, matrix):
+    for i, row in enumerate(matrix):
+        if char == 'J':
+            char = 'I'
+        if char in row:
+            return i, row.index(char)
+    return None
+
+def preprocess_text(text):
+    text = text.upper().replace("J", "I")
+    text = ''.join(c for c in text if c.isalpha())
+
+    digraphs = []
+    i = 0
+    while i < len(text):
+        a = text[i]
+        b = text[i+1] if i+1 < len(text) else 'X'
+        if a == b:
+            digraphs.append((a, 'X'))
+            i += 1
+        else:
+            digraphs.append((a, b))
+            i += 2
+    return digraphs
+
+def encrypt_pair(a, b, matrix):
+    row1, col1 = find_position(a, matrix)
+    row2, col2 = find_position(b, matrix)
+
+    if row1 == row2:  # Same row
+        return matrix[row1][(col1 + 1) % 5], matrix[row2][(col2 + 1) % 5]
+    elif col1 == col2:  # Same column
+        return matrix[(row1 + 1) % 5][col1], matrix[(row2 + 1) % 5][col2]
+    else:  # Rectangle
+        return matrix[row1][col2], matrix[row2][col1]
+
+def playfair_encrypt(message, custom_matrix):
+    matrix = build_matrix_from_custom(custom_matrix)
+    digraphs = preprocess_text(message)
+    ciphertext = ''
+    for a, b in digraphs:
+        c1, c2 = encrypt_pair(a, b, matrix)
+        ciphertext += c1 + c2
+    return ciphertext
+
+# === MAIN ===
+
+custom_matrix = [
+    "M F H I K",   # I/J is treated as I
+    "U N O P Q",
+    "Z V W X Y",
+    "E L A R G",
+    "D S T B C"
+]
+
+plaintext = "Must see you over Cadogan West. Coming at once."
+ciphertext = playfair_encrypt(plaintext, custom_matrix)
+
+# Print result
+print("Encrypted Ciphertext:")
+print(' '.join(ciphertext[i:i+5] for i in range(0, len(ciphertext), 5)))
