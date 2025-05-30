@@ -1,0 +1,171 @@
+# S-DES implementation with CBC mode
+# Author: ChatGPT
+
+# Helper functions and S-DES core components
+
+def permute(bits, sequence):
+    return [bits[i-1] for i in sequence]
+
+def left_shift(bits, n):
+    return bits[n:] + bits[:n]
+
+def xor(bits1, bits2):
+    return [b1 ^ b2 for b1, b2 in zip(bits1, bits2)]
+
+def bits_to_int(bits):
+    return int(''.join(str(b) for b in bits), 2)
+
+def int_to_bits(n, size):
+    return [int(x) for x in format(n, f'0{size}b')]
+
+# S-DES constants
+P10 = [3,5,2,7,4,10,1,9,8,6]
+P8 = [6,3,7,4,8,5,10,9]
+IP = [2,6,3,1,4,8,5,7]
+IP_inv = [4,1,3,5,7,2,8,6]
+EP = [4,1,2,3,2,3,4,1]
+P4 = [2,4,3,1]
+
+S0 = [
+    [1,0,3,2],
+    [3,2,1,0],
+    [0,2,1,3],
+    [3,1,3,2]
+]
+
+S1 = [
+    [0,1,2,3],
+    [2,0,1,3],
+    [3,0,1,0],
+    [2,1,0,3]
+]
+
+def generate_keys(key_10bits):
+    # Apply P10
+    p10_key = permute(key_10bits, P10)
+    # Split
+    left = p10_key[:5]
+    right = p10_key[5:]
+    # Left shifts
+    left1 = left_shift(left, 1)
+    right1 = left_shift(right, 1)
+    # First subkey K1
+    k1 = permute(left1 + right1, P8)
+    # Left shifts 2 more times
+    left2 = left_shift(left1, 2)
+    right2 = left_shift(right1, 2)
+    # Second subkey K2
+    k2 = permute(left2 + right2, P8)
+    return k1, k2
+
+def sbox_lookup(bits, sbox):
+    row = bits[0]*2 + bits[3]
+    col = bits[1]*2 + bits[2]
+    val = sbox[row][col]
+    return int_to_bits(val, 2)
+
+def fk(bits_8, subkey):
+    left = bits_8[:4]
+    right = bits_8[4:]
+    # Expand and permute right half
+    expanded_right = permute(right, EP)
+    # XOR with subkey
+    xor_result = xor(expanded_right, subkey)
+    # S-Boxes
+    left_sbox = sbox_lookup(xor_result[:4], S0)
+    right_sbox = sbox_lookup(xor_result[4:], S1)
+    # P4 permutation
+    p4_result = permute(left_sbox + right_sbox, P4)
+    # XOR with left half
+    left_result = xor(left, p4_result)
+    return left_result + right
+
+def switch_halves(bits_8):
+    return bits_8[4:] + bits_8[:4]
+
+def encrypt_sdes(plaintext_8bits, k1, k2):
+    # Initial permutation
+    ip_bits = permute(plaintext_8bits, IP)
+    # fk with k1
+    temp = fk(ip_bits, k1)
+    # switch halves
+    switched = switch_halves(temp)
+    # fk with k2
+    temp2 = fk(switched, k2)
+    # inverse initial permutation
+    ciphertext = permute(temp2, IP_inv)
+    return ciphertext
+
+def decrypt_sdes(ciphertext_8bits, k1, k2):
+    # Initial permutation
+    ip_bits = permute(ciphertext_8bits, IP)
+    # fk with k2 (reverse order)
+    temp = fk(ip_bits, k2)
+    # switch halves
+    switched = switch_halves(temp)
+    # fk with k1
+    temp2 = fk(switched, k1)
+    # inverse initial permutation
+    plaintext = permute(temp2, IP_inv)
+    return plaintext
+
+# CBC mode implementation for S-DES (8-bit blocks)
+
+def cbc_encrypt(plaintext_bits, key_bits, iv_bits):
+    k1, k2 = generate_keys(key_bits)
+    blocks = [plaintext_bits[i:i+8] for i in range(0, len(plaintext_bits), 8)]
+    ciphertext = []
+    prev_cipher = iv_bits
+    for block in blocks:
+        # XOR block with previous ciphertext (or IV for first)
+        xor_block = xor(block, prev_cipher)
+        cipher_block = encrypt_sdes(xor_block, k1, k2)
+        ciphertext.extend(cipher_block)
+        prev_cipher = cipher_block
+    return ciphertext
+
+def cbc_decrypt(ciphertext_bits, key_bits, iv_bits):
+    k1, k2 = generate_keys(key_bits)
+    blocks = [ciphertext_bits[i:i+8] for i in range(0, len(ciphertext_bits), 8)]
+    plaintext = []
+    prev_cipher = iv_bits
+    for block in blocks:
+        decrypted_block = decrypt_sdes(block, k1, k2)
+        plain_block = xor(decrypted_block, prev_cipher)
+        plaintext.extend(plain_block)
+        prev_cipher = block
+    return plaintext
+
+# Utility function to convert string of bits to list of ints
+def str_to_bitlist(s):
+    return [int(bit) for bit in s.replace(" ", "")]
+
+# Utility function to convert bit list to binary string
+def bitlist_to_str(bits):
+    return ''.join(str(b) for b in bits)
+
+# Test data from your problem statement
+
+if __name__ == "__main__":
+    # Inputs in binary strings
+    iv_str = "10101010"
+    plaintext_str = "0000000100100011"  # 16 bits (two blocks)
+    key_str = "0111111101"  # 10 bits key
+
+    iv_bits = str_to_bitlist(iv_str)
+    plaintext_bits = str_to_bitlist(plaintext_str)
+    key_bits = str_to_bitlist(key_str)
+
+    # Encrypt
+    ciphertext_bits = cbc_encrypt(plaintext_bits, key_bits, iv_bits)
+    print("Ciphertext (binary):", bitlist_to_str(ciphertext_bits))
+
+    # Expected ciphertext for first 8 bits is "11110100 00001011"
+    # Let's print in blocks of 8 bits for clarity:
+    print("Ciphertext blocks:")
+    for i in range(0, len(ciphertext_bits), 8):
+        print(bitlist_to_str(ciphertext_bits[i:i+8]))
+
+    # Decrypt
+    decrypted_bits = cbc_decrypt(ciphertext_bits, key_bits, iv_bits)
+    print("Decrypted plaintext (binary):", bitlist_to_str(decrypted_bits))
