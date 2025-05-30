@@ -1,0 +1,60 @@
+from math import gcd
+
+def extended_gcd(a, b):
+    if b == 0:
+        return a, 1, 0
+    g, x1, y1 = extended_gcd(b, a % b)
+    x = y1
+    y = x1 - (a // b) * y1
+    return g, x, y
+
+def mod_inverse(e, phi):
+    g, x, _ = extended_gcd(e, phi)
+    if g != 1:
+        return None
+    return x % phi
+
+def rsa_decrypt_block(c, d, n):
+    # Modular exponentiation
+    return pow(c, d, n)
+
+def main():
+    # Public key components
+    n = 3233  # Example n = 61 * 53
+    e = 17
+    
+    # Ciphertext blocks (example)
+    ciphertext_blocks = [2790, 875, 2447, 2182]
+    
+    # Suppose we know one plaintext block M that shares factor with n
+    # Let's say plaintext block is 61 (which is factor of n)
+    known_plaintext = 61
+    
+    # Step 1: Find gcd of known plaintext and n
+    factor = gcd(known_plaintext, n)
+    
+    if factor == 1:
+        print("No useful factor found with given plaintext.")
+        return
+    else:
+        print(f"Found factor of n: {factor}")
+        p = factor
+        q = n // p
+        print(f"Factors of n: p = {p}, q = {q}")
+    
+    # Step 2: Compute phi(n)
+    phi = (p - 1) * (q - 1)
+    
+    # Step 3: Find private key d
+    d = mod_inverse(e, phi)
+    if d is None:
+        print("Failed to find modular inverse for d.")
+        return
+    print(f"Private key exponent d = {d}")
+    
+    # Step 4: Decrypt ciphertext blocks
+    plaintext_blocks = [rsa_decrypt_block(c, d, n) for c in ciphertext_blocks]
+    print("Decrypted plaintext blocks:", plaintext_blocks)
+
+if __name__ == "__main__":
+    main()
